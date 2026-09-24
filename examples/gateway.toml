@@ -1,0 +1,16 @@
+# Origin only: keep /v1/systemone in the client request path.
+upstream_url = "http://127.0.0.1:55733"
+host = "127.0.0.1"
+port = 8080
+# Relative to this TOML file. A data directory outside the repo is also supported.
+output_root = "../captures"
+bucket_timezone = "Asia/Shanghai"
+capture_paths = ["/v1/systemone"]
+connect_timeout = 10.0
+write_timeout = 30.0
+pool_timeout = 30.0
+# Omit read_timeout for no response read deadline.
+# read_timeout = 300.0
+max_body_bytes = 16777216
+queue_bytes = 67108864
+max_pending_records = 4096

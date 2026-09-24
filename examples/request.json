@@ -1,0 +1,21 @@
+{
+  "model": "kev-latest",
+  "state": {"case": "B-002", "description": "I was charged twice. Please refund the duplicate payment today."},
+  "cache_salt": "gateway-example",
+  "questions": {
+    "route": {
+      "type": "choice",
+      "instructions": "Which department owns this case?",
+      "criteria": {"billing": "Payments and refunds", "delivery": "Parcel delivery"}
+    },
+    "refund": {
+      "type": "noul",
+      "instructions": "Does the customer request a refund?"
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is the request?",
+      "criteria": ["Can wait", "Handle this week", "Handle today"]
+    }
+  }
+}
