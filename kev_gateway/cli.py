@@ -23,7 +23,12 @@ def parser() -> argparse.ArgumentParser:
     serve.add_argument("--upstream", help="HTTP(S) origin, e.g. http://127.0.0.1:55733")
     serve.add_argument("--host")
     serve.add_argument("--port", type=int)
-    serve.add_argument("--output", type=Path, help="Capture root; command-line paths are relative to cwd")
+    serve.add_argument(
+        "--output-root",
+        "--output",
+        dest="output",
+        help="Capture directory; create if missing, fail startup if unavailable; relative to cwd",
+    )
     serve.add_argument(
         "--read-timeout", type=float, help="Read inactivity deadline in seconds; default unlimited"
     )

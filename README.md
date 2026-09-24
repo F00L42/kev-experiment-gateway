@@ -29,12 +29,23 @@ python -m kev_gateway serve --config examples/gateway.toml
 ```bash
 uv run kev-gateway serve --config examples/gateway.toml \
   --upstream http://NPU_SERVER:55733 --host 0.0.0.0 --port 8080 \
-  --output /data/kev-captures
+  --output-root /data/kev-captures
 ```
 
 上游配置只填写 HTTP(S) origin，不带 `/v1`、query 或认证信息。客户端请求的完整路径原样附到该 origin；
 gateway 不增加认证策略，原有 Authorization 转发给上游。配置文件相对路径基于 TOML 所在目录，
-命令行 `--output` 相对当前工作目录。启动时打印 `run_id` 和数据目录。
+命令行 `--output-root`（兼容别名 `--output`）相对当前工作目录。启动时打印 `run_id` 和数据目录。
+
+保存路径通过配置项 `output_root` 指定，例如：
+
+```toml
+output_root = "/data/kev-captures"
+```
+
+目录不存在时，启动会递归创建；已存在且可写的目录直接复用。
+启动前会检查根目录、运行目录、请求目录及当天日期桶，并实际试写临时文件。
+路径被普通文件占用、无权限、只读或磁盘无法写入时，显示具体路径与原因并以非零状态退出，
+不开始接收 HTTP 请求。运行后的写盘故障仍按下文采集失败规则处理。
 
 `read_timeout` 默认省略，表示不设置响应读取截止时间；连接超时默认 10 秒，写入和连接池等待超时默认 30 秒。
 可用 `--read-timeout 300` 设置读取无进展的超时；它不是父请求总 deadline。

@@ -6,6 +6,7 @@ import base64
 import json
 import logging
 import os
+import tempfile
 import threading
 import time
 import uuid
@@ -31,6 +32,27 @@ SECRET_HEADERS = frozenset(
 )
 SECRET_QUERY = frozenset({"api_key", "api-key", "key", "token", "access_token"})
 RECORD_ALLOWANCE = 1024
+
+
+class OutputRootError(OSError):
+    """An actionable startup error containing only local storage information."""
+
+
+def prepare_output_root(root: Path, bucket: str) -> None:
+    """Create capture directories and verify actual writes before accepting HTTP."""
+    for directory in (root, root / "runtime", root / "exchanges", root / "exchanges" / bucket):
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            # A permission-bit check alone misses ACLs, read-only mounts and full disks.
+            with tempfile.TemporaryFile(dir=directory, prefix=".kev-write-") as probe:
+                probe.write(b"\0")
+                probe.flush()
+                os.fsync(probe.fileno())
+        except OSError as exc:
+            raise OutputRootError(
+                f"Cannot initialize output_root '{root}': directory '{directory}' "
+                f"could not be created or written ({type(exc).__name__}: {exc.strerror or exc})"
+            ) from exc
 
 
 def utc_now() -> datetime:
@@ -110,6 +132,8 @@ class Capture:
         self.config = config
         self.run_id = str(uuid.uuid4())
         self.root = config.output_root
+        self.timezone = ZoneInfo(config.bucket_timezone)
+        prepare_output_root(self.root, utc_now().astimezone(self.timezone).date().isoformat())
         self.runtime = self.root / "runtime" / self.run_id
         self.runtime.mkdir(parents=True, exist_ok=False)
         try:
@@ -123,7 +147,6 @@ class Capture:
         self.handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
         self.log.addHandler(self.handler)
         self.started_at = iso_time(utc_now())
-        self.timezone = ZoneInfo(config.bucket_timezone)
         self.condition = threading.Condition()
         self.queue: deque[CaptureContext] = deque()
         self.memory_bytes = 0
@@ -143,7 +166,12 @@ class Capture:
             write_errors=0,
             memory_peak_bytes=0,
         )
-        self._save_run()
+        try:
+            self._save_run()
+        except BaseException:
+            self.log.removeHandler(self.handler)
+            self.handler.close()
+            raise
         self.thread = threading.Thread(target=self._run, name="kev-capture-writer", daemon=True)
         self.thread.start()
         self.log.info("Capture started run_id=%s output=%s", self.run_id, self.root)

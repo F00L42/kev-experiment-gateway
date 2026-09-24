@@ -3,6 +3,7 @@ upstream_url = "http://127.0.0.1:55733"
 host = "127.0.0.1"
 port = 8080
 # Relative to this TOML file. A data directory outside the repo is also supported.
+# Missing directories are created at startup; creation/write failure stops startup.
 output_root = "../captures"
 bucket_timezone = "Asia/Shanghai"
 capture_paths = ["/v1/systemone"]

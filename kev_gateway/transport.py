@@ -8,7 +8,7 @@ import logging
 
 import httpx
 
-from .capture import Capture
+from .capture import Capture, OutputRootError
 from .config import GatewayConfig
 
 log = logging.getLogger(__name__)
@@ -77,7 +77,15 @@ class Gateway:
             raise RuntimeError("Gateway is closing")
         created_capture = self.capture is None
         if created_capture:
-            self.capture = await asyncio.to_thread(Capture, self.config)
+            try:
+                self.capture = await asyncio.to_thread(Capture, self.config)
+            except OutputRootError:
+                raise
+            except OSError as exc:
+                raise OutputRootError(
+                    f"Cannot initialize output_root '{self.config.output_root}' "
+                    f"({type(exc).__name__}: {exc.strerror or exc})"
+                ) from exc
         try:
             if self.client is None:
                 self.client = httpx.AsyncClient(
@@ -136,7 +144,8 @@ class Gateway:
                     try:
                         await self.start()
                     except Exception as exc:
-                        await send({"type": "lifespan.startup.failed", "message": type(exc).__name__})
+                        message = str(exc) if isinstance(exc, OutputRootError) else type(exc).__name__
+                        await send({"type": "lifespan.startup.failed", "message": message})
                         return
                     await send({"type": "lifespan.startup.complete"})
                 elif event["type"] == "lifespan.shutdown":

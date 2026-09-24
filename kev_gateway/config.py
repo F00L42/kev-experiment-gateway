@@ -10,6 +10,12 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 
+def output_path(value: str | Path) -> Path:
+    if not isinstance(value, (str, Path)) or (isinstance(value, str) and not value.strip()):
+        raise ValueError("output_root must be a nonempty directory path")
+    return Path(value).expanduser()
+
+
 @dataclass(frozen=True)
 class GatewayConfig:
     upstream_url: str
@@ -72,7 +78,7 @@ class GatewayConfig:
         ):
             raise ValueError("capture_paths must contain absolute HTTP paths or '*'")
         object.__setattr__(self, "capture_paths", tuple(self.capture_paths))
-        object.__setattr__(self, "output_root", Path(self.output_root).expanduser().resolve())
+        object.__setattr__(self, "output_root", output_path(self.output_root).resolve())
 
     def snapshot(self) -> dict:
         result = asdict(self)
@@ -87,7 +93,7 @@ def load_config(path: Path | None = None, overrides: dict | None = None) -> Gate
         with path.open("rb") as stream:
             values = tomllib.load(stream)
         if "output_root" in values:
-            root = Path(values["output_root"]).expanduser()
+            root = output_path(values["output_root"])
             values["output_root"] = root if root.is_absolute() else path.parent / root
     values.update({key: value for key, value in (overrides or {}).items() if value is not None})
     unknown = set(values) - {field.name for field in fields(GatewayConfig)}
