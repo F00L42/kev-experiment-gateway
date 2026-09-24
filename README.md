@@ -183,7 +183,7 @@ WebSocket、CONNECT 和协议升级不支持。
 uv sync --locked --group dev
 uv run ruff check .
 uv run ruff format --check .
-uv run pytest -q --basetemp .pytest_cache/manual-test --tb=short
+uv run pytest -q --basetemp .pytest-manual-test --tb=short
 ```
 
 `--basetemp` 是 pytest 专用的临时目录，请勿指向业务数据。GitHub Actions 配置了 Windows/Linux、
